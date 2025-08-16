@@ -1,0 +1,39 @@
+---
+- name: Deployment of Nextcloud by turnkey template
+  hosts: prox_master
+  tasks:
+    - name: Get hostname for later use
+      ansible.builtin.command: hostname
+      register: proxHostname
+    - name: Create container from turnkey Nextcloud template
+      community.general.proxmox:
+        api_host: "{{ ansible_host }}"
+        api_user: root@pam
+        api_password: "{{ ansible_password }}"
+        node: "{{ proxHostname.stdout }}"
+        password: "{{ ansible_password }}"
+        hostname: nextcloud.cpb.mil
+        ostemplate: local:vztmpl/debian-12-turnkey-nextcloud_18.0-1_amd64.tar.gz
+        storage: local-lvm
+        onboot: true
+        cores: 2
+        cpus: 1
+        memory: 4096
+        swap: 1024
+        netif: '{"net0":"name=eth0,bridge=vmbr0,gw=10.10.11.254,ip=10.10.11.101/24"}'
+        mounts: '{"rootfs":"local-lvm:100"}'
+        features:
+          - nesting=1
+        unprivileged: true
+        description: CREATED WITH ANSIBLE
+      changed_when: true
+      register: nextcloudContainer
+    - name: Start Nextcloud container
+      community.general.proxmox:
+        api_host: "{{ ansible_host }}"
+        api_user: root@pam
+        api_password: "{{ ansible_password }}"
+        vmid: 101
+        node: "{{ proxHostname.stdout }}"
+        state: started
+      changed_when: true

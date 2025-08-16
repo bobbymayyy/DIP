@@ -1,0 +1,153 @@
+---
+- name: Deployment of opnSense router by template backup
+  hosts: prox_master
+  tasks:
+    - name: Create a directory if it does not exist
+      ansible.builtin.file:
+        path: /root/opnconf
+        state: directory
+        mode: '0755'
+    - name: Copy over Config for opnSense
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../configs/config.xml"
+        dest: /root/opnconf/
+        owner: root
+        group: root
+        mode: '0644'
+    - name: Get hostname for later use
+      ansible.builtin.command: hostname
+      register: proxHostname
+    - name: Restore opnSense VM from backup template
+      ansible.builtin.command: qmrestore --unique true /var/lib/vz/dump/vzdump-qemu-100-2023_11_27-12_28_33.vma.zst 100
+      register: opnTemprestore
+      ignore_errors: True
+    - name: Print opnTemprestore
+      ansible.builtin.debug: msg="{{ opnTemprestore.stdout_lines }}"
+    - name: Pause for 30 seconds to wait for restore
+      ansible.builtin.pause:
+        seconds: 30
+    - name: Start opnSense VM
+      community.general.proxmox_kvm:
+        api_host: "{{ ansible_host }}"
+        api_user: root@pam
+        api_password: "{{ ansible_password }}"
+        name: opnSense
+        vmid: 100
+        node: "{{ proxHostname.stdout }}"
+        state: started
+      changed_when: true
+    - name: Pause for 90 seconds to wait for boot
+      ansible.builtin.pause:
+        seconds: 90
+    - name: Add default opnSense subnet to Proxmox for ssh
+      ansible.builtin.command: ip a add 192.168.1.69/24 dev vmbr0
+    - name: SCP over configuration files for opnSense
+      ansible.builtin.command: sshpass -p opnsense scp -o StrictHostKeyChecking=no /root/opnconf/config.xml root@192.168.1.1:/conf/config.xml
+    - name: Delete default opnSense subnet from Proxmox to cleanup
+      ansible.builtin.command: ip a del 192.168.1.69/24 dev vmbr0
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key r
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key o
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key o
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key t
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key o
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key p
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key n
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key s
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key e
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key n
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key s
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key e
+    - name: Login to reload
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Select reload services
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key 1
+    - name: Select reload services
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key 1
+    - name: Select reload services
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Logout
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key 0
+    - name: Logout
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Pause for 5 seconds to allow for login page
+      ansible.builtin.pause:
+        seconds: 5
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key i
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key n
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key s
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key t
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key a
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key l
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key l
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key e
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key r
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key o
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key p
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key n
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key s
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key e
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key n
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key s
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key e
+    - name: Login to install to harddisk
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Select defaults for install
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Select defaults for install
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Pause for 10 seconds to initialize
+      ansible.builtin.pause:
+        seconds: 10
+    - name: Choose harddisk for install
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key down
+    - name: Choose harddisk for install
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Select defaults for install
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Confirm disk destruction
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key left
+    - name: Confirm disk destruction
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Pause for 210 seconds to finish install
+      ansible.builtin.pause:
+        seconds: 210
+    - name: Complete install and reboot
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key down
+    - name: Complete install and reboot
+      ansible.builtin.command: pvesh set /nodes/"{{ proxHostname.stdout }}"/qemu/100/sendkey --key ret
+    - name: Pause for 120 seconds to wait for reboot
+      ansible.builtin.pause:
+        seconds: 120

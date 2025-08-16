@@ -1,0 +1,25 @@
+#!ipxe
+menu PXE Boot Menu
+item --gap -- ----------------------------------------------------
+item selected_os Boot Selected PXE OS
+item shell iPXE Shell
+item exit Exit/Boot from Local Drive
+
+choose --default selected_os --timeout 10000 option && goto ${option} || goto cancel
+
+:selected_os
+set server_root http://10.10.10.1/selected_os
+initrd ${server_root}/images/pxeboot/initrd.img
+kernel ${server_root}/images/pxeboot/vmlinuz inst.repo=${server_root}/ ip=dhcp ipv6.disable initrd=initrd.img # - Non-Kickstart
+#kernel ${server_root}/images/pxeboot/vmlinuz inst.ks=${server_root}/ks.cfg ip=dhcp ipv6.disable initrd=initrd.img # - Kickstart
+boot
+
+:shell
+shell
+
+:exit
+exit
+
+:cancel
+echo Boot canceled, returning to PXE menu...
+goto start

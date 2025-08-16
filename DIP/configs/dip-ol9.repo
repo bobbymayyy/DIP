@@ -1,0 +1,30 @@
+# Replace <username> below with your username
+
+[ol9_appstream]
+name=Oracle Linux 9 AppStream
+enabled=1
+baseurl=file:///run/media/<username>/DIP/ol9-repo/ol9_appstream
+gpgcheck=0
+metadata_expire=-1
+
+[ol9_baseos_latest]
+name=Oracle Linux 9 BaseOS
+enabled=1
+baseurl=file:///run/media/<username>/DIP/ol9-repo/ol9_baseos_latest
+gpgcheck=0
+metadata_expire=-1
+
+[ol9_developer_EPEL]
+name=Oracle Linux 9 EPEL for Development
+enabled=1
+baseurl=file:///run/media/<username>/DIP/ol9-repo/ol9_developer_EPEL
+gpgcheck=0
+metadata_expire=-1
+
+[ol9_UEKR7]
+name=Oracle Linux 9 Unbreakable Enterprise Kernel
+enabled=1
+baseurl=file:///run/media/<username>/DIP/ol9-repo/ol9_UEKR7
+gpgcheck=0
+metadata_expire=-1
+
