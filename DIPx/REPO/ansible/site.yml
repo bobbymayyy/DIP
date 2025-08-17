@@ -1,0 +1,17 @@
+- hosts: controller
+  roles: [ base_linux ]
+
+- hosts: all
+  roles: [ base_linux ]
+
+- hosts: dc
+  roles: [ dc_samba_ad ]
+
+- hosts: nas
+  roles: [ nas_filesvc ]
+
+- hosts: nms
+  roles: [ nms_stack ]
+
+- hosts: web
+  roles: [ web_nginx ]
