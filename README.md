@@ -175,7 +175,3 @@ Some areas that may benefit from future cleanup:
 DIP is a rebuildable infrastructure forge for incident response. Instead of manually standing up tools one by one during a high-pressure event, the platform aims to turn the process into a repeatable deployment workflow.
 
 That makes the project valuable not only as code, but as a demonstration of systems architecture, automation, cybersecurity operations, virtualization, networking, and business continuity thinking.
-
-## License
-
-No license file is currently included. Add a license before expecting reuse or contribution from others.
