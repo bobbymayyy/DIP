@@ -12,7 +12,7 @@
         api_password: "{{ ansible_password }}"
         node: "{{ proxHostname.stdout }}"
         password: "{{ ansible_password }}"
-        hostname: nextcloud.cpb.mil
+        hostname: nextcloud.home.lab
         ostemplate: local:vztmpl/debian-12-turnkey-nextcloud_18.0-1_amd64.tar.gz
         storage: local-lvm
         onboot: true
