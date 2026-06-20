@@ -203,7 +203,7 @@
   <system>
     <optimization>normal</optimization>
     <hostname>OPNsense</hostname>
-    <domain>cpb.mil</domain>
+    <domain>home.lab</domain>
     <dnsallowoverride>1</dnsallowoverride>
     <group>
       <name>admins</name>
@@ -272,7 +272,7 @@
     </firmware>
     <language>en_US</language>
     <dnsallowoverride_exclude/>
-    <dnssearchdomain>cpb.mil</dnssearchdomain>
+    <dnssearchdomain>home.lab</dnssearchdomain>
     <dnsserver>10.10.11.254</dnsserver>
     <dns1gw>none</dns1gw>
     <dns2gw>none</dns2gw>
@@ -315,8 +315,8 @@
     <lan>
       <enable>1</enable>
       <gateway>10.10.11.254</gateway>
-      <domain>cpb.mil</domain>
-      <domainsearchlist>cpb.mil</domainsearchlist>
+      <domain>home.lab</domain>
+      <domainsearchlist>home.lab</domainsearchlist>
       <ddnsdomainalgorithm>hmac-md5</ddnsdomainalgorithm>
       <numberoptions>
         <item/>
@@ -908,7 +908,7 @@
         <host uuid="9e0349e5-0bb4-4e31-b424-7a934b9d2f4c">
           <enabled>1</enabled>
           <hostname>nextcloud</hostname>
-          <domain>cpb.mil</domain>
+          <domain>home.lab</domain>
           <rr>A</rr>
           <mxprio/>
           <mx/>
@@ -918,7 +918,7 @@
         <host uuid="fe9f9e6c-01db-47cc-95e9-e7286ae6fbea">
           <enabled>1</enabled>
           <hostname>mattermost</hostname>
-          <domain>cpb.mil</domain>
+          <domain>home.lab</domain>
           <rr>A</rr>
           <mxprio/>
           <mx/>
@@ -928,7 +928,7 @@
         <host uuid="e8d1de5d-aae4-4d64-9d16-c8582e3a60e9">
           <enabled>1</enabled>
           <hostname>redmine</hostname>
-          <domain>cpb.mil</domain>
+          <domain>home.lab</domain>
           <rr>A</rr>
           <mxprio/>
           <mx/>
@@ -938,7 +938,7 @@
         <host uuid="21e30af2-8860-4a71-8cb7-26c6d9344659">
           <enabled>1</enabled>
           <hostname>som</hostname>
-          <domain>cpb.mil</domain>
+          <domain>home.lab</domain>
           <rr>A</rr>
           <mxprio/>
           <mx/>
