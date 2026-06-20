@@ -12,7 +12,7 @@
         api_password: "{{ ansible_password }}"
         node: "{{ proxHostname.stdout }}"
         password: "{{ ansible_password }}"
-        hostname: redmine.cpb.mil
+        hostname: redmine.home.lab
         ostemplate: local:vztmpl/debian-11-turnkey-redmine_17.1-1_amd64.tar.gz
         storage: local-lvm
         onboot: true
