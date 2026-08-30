@@ -64,11 +64,22 @@ done
 
 [[ "$ESXI_VERSION" == "7" || "$ESXI_VERSION" == "8" ]] || die "ESXI_VERSION must be 7 or 8"
 [[ "$ESXI_ROOTPW_HASH" == '$6$'* ]] || die "ESXI_ROOTPW_HASH must be a SHA-512 crypt hash beginning with \$6\$"
+[[ "$ESXI_ROOTPW_HASH" =~ ^[A-Za-z0-9.$/=]+$ ]] || die "ESXI_ROOTPW_HASH contains unsupported characters"
 [[ "$CONFIRM_DISK_WIPE" == "YES" ]] || die "refusing to build destructive installer: set CONFIRM_DISK_WIPE=YES after verifying INSTALL_TARGET"
 [[ "$ENABLE_SSH" == "0" || "$ENABLE_SSH" == "1" ]] || die "ENABLE_SSH must be 0 or 1"
 [[ "$DEBUG" == "0" || "$DEBUG" == "1" ]] || die "DEBUG must be 0 or 1"
+
+for key in ESXI_IP ESXI_NETMASK ESXI_GATEWAY; do
+  [[ "${!key}" =~ ^[0-9.]+$ ]] || die "$key contains unsupported characters"
+done
+for key in ESXI_DNS ESXI_HOSTNAME NTP_SERVER REPO_LABEL DATASTORE_LABEL PROV_VM_NAME MGMT_PORTGROUP; do
+  [[ "${!key}" =~ ^[A-Za-z0-9._:-]+$ ]] || die "$key contains unsupported characters"
+done
+[[ "$PORTGROUPS" =~ ^[A-Za-z0-9._:-]+(,[A-Za-z0-9._:-]+)*$ ]] || die "PORTGROUPS contains unsupported characters"
 [[ "$PORTGROUPS" == *"${MGMT_PORTGROUP}:"* ]] || die "MGMT_PORTGROUP must also appear in PORTGROUPS"
+[[ "$PROV_ISO_RELATIVE" =~ ^[A-Za-z0-9._/-]+$ ]] || die "PROV_ISO_RELATIVE contains unsupported characters"
 [[ "$PROV_ISO_RELATIVE" != /* && "$PROV_ISO_RELATIVE" != *".."* ]] || die "PROV_ISO_RELATIVE must be a safe relative path"
+printf '%s\n' "$INSTALL_TARGET" | grep -Eq '^[-A-Za-z0-9._:+\\ ]+$' || die "INSTALL_TARGET contains unsupported characters"
 
 TEMPLATE="${SCRIPT_DIR}/ks${ESXI_VERSION}.cfg"
 [[ -r "$TEMPLATE" ]] || die "missing kickstart template: $TEMPLATE"
