@@ -1,0 +1,38 @@
+# DIPx ESXi installer build configuration.
+# Copy this file to dipx.conf, edit it locally, and do not commit dipx.conf.
+# Values are literal text after the first '='. Do not wrap values in shell quotes.
+
+ESXI_VERSION=8
+
+# Generate interactively with: openssl passwd -6
+# Paste the full $6$... hash here. The plaintext password is never needed by the builder.
+ESXI_ROOTPW_HASH=
+
+ESXI_IP=10.0.99.2
+ESXI_NETMASK=255.255.255.0
+ESXI_GATEWAY=10.0.99.1
+ESXI_DNS=10.0.20.10
+ESXI_HOSTNAME=esxi01.nerd.dipx
+NTP_SERVER=10.0.20.10
+
+# ESXi --firstdisk selector. "local" is convenient but can be ambiguous on multi-disk hosts.
+# Use a hardware-specific selector where practical.
+INSTALL_TARGET=local
+
+# The kickstart uses --overwritevmfs. The builder refuses to create an ISO until this is YES.
+CONFIRM_DISK_WIPE=NO
+
+REPO_LABEL=REPO
+DATASTORE_LABEL=datastore1
+PROV_VM_NAME=prov01
+MGMT_PORTGROUP=VLAN99-Mgmt
+PROV_ISO_RELATIVE=images/isos/OL10-prov.iso
+
+# Comma-separated portgroup:vlan pairs. MGMT_PORTGROUP must be present here.
+PORTGROUPS=VLAN10-Users:10,VLAN15-WiFi:15,VLAN20-Servers:20,VLAN30-DMZ:30,VLAN99-Mgmt:99
+
+# SSH is not required for the first-boot bootstrap and is disabled by default.
+ENABLE_SSH=0
+
+# DEBUG=1 enables shell tracing in %firstboot. Keep off unless troubleshooting.
+DEBUG=0
