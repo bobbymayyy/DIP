@@ -111,14 +111,24 @@ if re.search(r"@@[A-Z][A-Z0-9_]*@@", text):
 dst.write_text(text, encoding="utf-8", newline="\n")
 PY
 
-boot_cfg_paths=$(xorriso -indev "$SOURCE_ISO" -find / -type f -iname boot.cfg -print 2>/dev/null || true)
-LEGACY_BOOT_PATH=$(printf '%s\n' "$boot_cfg_paths" | awk 'NF && $0 ~ "^\/[^\/]+$" {print; exit}')
-EFI_BOOT_PATH=$(printf '%s\n' "$boot_cfg_paths" | awk 'tolower($0) == "/efi/boot/boot.cfg" {print; exit}')
-[[ -n "$LEGACY_BOOT_PATH" ]] || die "source ISO has no root boot.cfg"
-[[ -n "$EFI_BOOT_PATH" ]] || die "source ISO has no EFI/BOOT/boot.cfg"
+extract_boot_cfg() {
+  local dest=$1
+  local var_name=$2
+  shift 2
+  local candidate
+  for candidate in "$@"; do
+    if xorriso -osirrox on -indev "$SOURCE_ISO" -extract "$candidate" "$dest" >/dev/null 2>&1; then
+      printf -v "$var_name" '%s' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
 
-xorriso -osirrox on -indev "$SOURCE_ISO" -extract "$LEGACY_BOOT_PATH" "$legacy_cfg" >/dev/null 2>&1 || die "failed to extract $LEGACY_BOOT_PATH"
-xorriso -osirrox on -indev "$SOURCE_ISO" -extract "$EFI_BOOT_PATH" "$efi_cfg" >/dev/null 2>&1 || die "failed to extract $EFI_BOOT_PATH"
+LEGACY_BOOT_PATH=""
+EFI_BOOT_PATH=""
+extract_boot_cfg "$legacy_cfg" LEGACY_BOOT_PATH /BOOT.CFG /boot.cfg || die "source ISO has no root boot.cfg"
+extract_boot_cfg "$efi_cfg" EFI_BOOT_PATH /EFI/BOOT/BOOT.CFG /efi/boot/boot.cfg /EFI/BOOT/boot.cfg /efi/boot/BOOT.CFG || die "source ISO has no EFI/BOOT/boot.cfg"
 
 patch_boot_cfg() {
   local cfg=$1
