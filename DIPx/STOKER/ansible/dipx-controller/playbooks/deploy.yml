@@ -1,0 +1,50 @@
+---
+- name: Prepare the provisional DIPx controller
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    stoker_home: /home/stoker
+    local_bin: /home/stoker/.local/bin
+    state_dir: /home/stoker/.local/state/dipx
+    govc_archive: "{{ playbook_dir }}/../files/govc_Linux_x86_64.tar.gz"
+
+  tasks:
+    - name: Create controller directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0750"
+      loop:
+        - "{{ local_bin }}"
+        - "{{ state_dir }}"
+
+    - name: Install embedded govc
+      ansible.builtin.unarchive:
+        src: "{{ govc_archive }}"
+        dest: "{{ local_bin }}"
+        remote_src: true
+        creates: "{{ local_bin }}/govc"
+
+    - name: Make govc executable
+      ansible.builtin.file:
+        path: "{{ local_bin }}/govc"
+        state: file
+        mode: "0750"
+
+    - name: Verify govc starts
+      ansible.builtin.command:
+        cmd: "{{ local_bin }}/govc version"
+      changed_when: false
+
+    - name: Verify VMware Tools transport exists
+      ansible.builtin.command:
+        cmd: vmtoolsd --version
+      changed_when: false
+
+    - name: Mark controller ready
+      ansible.builtin.copy:
+        dest: "{{ state_dir }}/controller-ready"
+        content: "STOKER DIPx controller bootstrap complete\n"
+        mode: "0640"

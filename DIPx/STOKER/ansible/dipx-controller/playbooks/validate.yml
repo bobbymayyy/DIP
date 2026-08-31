@@ -1,0 +1,25 @@
+---
+- name: Validate the provisional DIPx controller
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Check govc
+      ansible.builtin.command:
+        cmd: /home/stoker/.local/bin/govc version
+      changed_when: false
+
+    - name: Check VMware Tools
+      ansible.builtin.command:
+        cmd: vmtoolsd --version
+      changed_when: false
+
+    - name: Check bootstrap marker
+      ansible.builtin.stat:
+        path: /home/stoker/.local/state/dipx/controller-ready
+      register: ready
+
+    - name: Require bootstrap completion
+      ansible.builtin.assert:
+        that: ready.stat.exists

@@ -1,0 +1,24 @@
+ansible:
+  project_root: /opt/stoker/projects
+  versions_root: /opt/stoker/.versions/projects
+  staging_root: /opt/stoker/.staging/projects
+  inventory_root: /opt/stoker/inventory
+  roles_root: /opt/stoker/roles
+  collections_root: /opt/stoker/collections
+  artifacts_root: /opt/stoker/artifacts
+  logs_root: /opt/stoker/logs/ansible
+  secrets_root: /etc/stoker/secrets
+  default_inventory: production
+  retain_versions: 3
+  validation:
+    syntax_check: true
+    lint: false
+
+projects:
+  - name: dipx-controller
+    enabled: true
+    source: local
+    path: ../ansible/dipx-controller
+    version: "0.1.0"
+    resolve_dependencies: true
+    default_playbook: deploy

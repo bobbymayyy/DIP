@@ -1,0 +1,68 @@
+modules:
+  ansible_controller:
+    enabled: true
+    packages:
+      - ansible-core
+      - ansible-lint
+      - git
+      - openssh-client
+      - rsync
+      - zstd
+      - python3
+      - python3-jinja2
+      - python3-venv
+      - python3-yaml
+    post_install_script: ansible-controller.sh
+    configuration:
+      inventory_path: /opt/stoker/inventory
+      project_path: /opt/stoker/projects
+      versions_path: /opt/stoker/.versions/projects
+      staging_path: /opt/stoker/.staging/projects
+      roles_path: /opt/stoker/roles
+      collections_path: /opt/stoker/collections
+      artifacts_path: /opt/stoker/artifacts
+      logs_path: /opt/stoker/logs/ansible
+      secrets_path: /etc/stoker/secrets
+
+  containers:
+    enabled: false
+    packages: [docker.io, docker-cli, docker-compose]
+    post_install_script: containers.sh
+    configuration:
+      compose_path: /opt/stoker/compose
+      image_cache_path: /opt/stoker/images
+
+  routing:
+    enabled: false
+    packages: [nftables, python3, python3-yaml]
+    post_install_script: network.sh
+    configuration:
+      upstream_interface: auto
+      enable_ipv4_forwarding: false
+      enable_nat: false
+
+  dhcp:
+    enabled: false
+    packages: [kea-dhcp4-server]
+    post_install_script: network.sh
+    configuration:
+      interface: auto
+      subnet: 10.0.99.0/24
+      pool_start: 10.0.99.100
+      pool_end: 10.0.99.199
+      gateway: 10.0.99.1
+      dns_servers: [10.0.20.10]
+      domain_name: nerd.dipx
+      renew_timer: 900
+      rebind_timer: 1800
+      valid_lifetime: 3600
+      max_valid_lifetime: 7200
+
+  dns:
+    enabled: false
+    packages: [bind9, bind9-utils]
+    post_install_script: network.sh
+    configuration:
+      recursion: false
+      forwarders: []
+      forward_policy: only

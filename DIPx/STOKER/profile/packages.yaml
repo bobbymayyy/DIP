@@ -1,0 +1,26 @@
+package_groups:
+  base:
+    enabled: true
+    packages:
+      - ca-certificates
+      - curl
+      - jq
+      - less
+      - open-vm-tools
+      - openssh-server
+      - rsync
+      - sudo
+      - tmux
+      - vim
+
+  diagnostics:
+    enabled: true
+    packages:
+      - ethtool
+      - iproute2
+      - iputils-ping
+      - lsof
+      - procps
+      - tcpdump
+
+exclude: []
