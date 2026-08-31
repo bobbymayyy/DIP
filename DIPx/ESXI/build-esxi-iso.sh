@@ -12,6 +12,11 @@ Builds a bootable ESXi 7/8 installer ISO with a rendered DIPx kickstart embedded
 as /KS.CFG. The original ISO boot layout is replayed by xorriso; only KS.CFG,
 BOOT.CFG, and EFI/BOOT/BOOT.CFG are replaced.
 
+The builder creates a unique ESXi controller API password per build unless
+DIPX_ESXI_API_PASSWORD is supplied in the environment. The password is never
+written to Git or the config file, but it is embedded in the generated installer
+and must therefore be treated as deployment-sensitive media.
+
 Required config values are documented in dipx.conf.example.
 USAGE
 }
@@ -102,6 +107,18 @@ IFS=$OLDIFS
 [[ "$CONTROLLER_ISO_RELATIVE" != /* && "$CONTROLLER_ISO_RELATIVE" != *".."* ]] || die "CONTROLLER_ISO_RELATIVE must be a safe relative path"
 printf '%s\n' "$INSTALL_TARGETS" | grep -Eq '^[-A-Za-z0-9._:+,\\ ]+$' || die "INSTALL_TARGETS contains unsupported characters"
 
+DIPX_ESXI_API_USER=${DIPX_ESXI_API_USER:-dipx-controller}
+[[ "$DIPX_ESXI_API_USER" =~ ^[A-Za-z0-9._-]+$ ]] || die "DIPX_ESXI_API_USER contains unsupported characters"
+if [[ -z "${DIPX_ESXI_API_PASSWORD:-}" ]]; then
+  DIPX_ESXI_API_PASSWORD=$(python3 - <<'PY'
+import secrets
+print("Dpx7!a" + secrets.token_urlsafe(24))
+PY
+)
+fi
+[[ ${#DIPX_ESXI_API_PASSWORD} -ge 16 ]] || die "DIPX_ESXI_API_PASSWORD must be at least 16 characters"
+[[ "$DIPX_ESXI_API_PASSWORD" =~ ^[A-Za-z0-9._!@%+-]+$ ]] || die "DIPX_ESXI_API_PASSWORD contains unsupported characters"
+
 TEMPLATE="${SCRIPT_DIR}/ks${ESXI_VERSION}.cfg"
 [[ -r "$TEMPLATE" ]] || die "missing kickstart template: $TEMPLATE"
 
@@ -124,6 +141,7 @@ export ESXI_ROOTPW_HASH ESXI_IP ESXI_NETMASK ESXI_GATEWAY ESXI_DNS ESXI_HOSTNAME
 export INSTALL_TARGETS NTP_SERVER REPO_LABEL DATASTORE_LABEL CONTROLLER_VM_NAME
 export MGMT_PORTGROUP CONTROLLER_ISO_RELATIVE PORTGROUPS ENABLE_SSH DEBUG
 export CONTROLLER_VCPUS CONTROLLER_MEMORY_MB CONTROLLER_DISK_GB
+export DIPX_ESXI_API_USER DIPX_ESXI_API_PASSWORD
 
 python3 - "$TEMPLATE" "$rendered_ks" <<'PY'
 import os
@@ -196,6 +214,7 @@ rm -f -- "$OUTPUT_ISO"
 log "source ISO: $SOURCE_ISO"
 log "target disk selectors: $INSTALL_TARGETS"
 log "controller: ${CONTROLLER_VM_NAME} (${CONTROLLER_VCPUS} vCPU, ${CONTROLLER_MEMORY_MB} MiB, ${CONTROLLER_DISK_GB} GiB thin)"
+log "controller API account: ${DIPX_ESXI_API_USER} (unique password injected through VMware GuestInfo)"
 log "building ESXi $ESXI_VERSION installer: $OUTPUT_ISO"
 
 # Modify the vendor ISO in xorriso native mode and replay its existing BIOS/UEFI
@@ -213,7 +232,6 @@ xorriso \
 
 [[ -s "$OUTPUT_ISO" ]] || die "xorriso did not produce an output ISO"
 
-# Verify the three intended mutations can be read back from the result.
 verify_dir="$WORKDIR/verify"
 mkdir -p "$verify_dir"
 xorriso -osirrox on -indev "$OUTPUT_ISO" -extract /KS.CFG "$verify_dir/KS.CFG" >/dev/null 2>&1 || die "output ISO missing /KS.CFG"

@@ -2,6 +2,44 @@
 set -eu
 
 STATE=/home/stoker/.local/state/dipx/controller-ready
+SECRET_DIR=/etc/stoker/secrets
+SECRET_FILE=${SECRET_DIR}/dipx-esxi.env
+
 [ -f "$STATE" ] && exit 0
 
-exec /usr/local/sbin/stoker run dipx-controller deploy --inventory production
+read_guestinfo(){
+  vmtoolsd --cmd "info-get $1" 2>/dev/null || true
+}
+
+if [ ! -s "$SECRET_FILE" ]; then
+  ESXI_HOST=$(read_guestinfo guestinfo.dipx.esxi_host)
+  ESXI_USER=$(read_guestinfo guestinfo.dipx.esxi_user)
+  ESXI_PASSWORD=$(read_guestinfo guestinfo.dipx.esxi_password)
+
+  [ -n "$ESXI_HOST" ] || { echo "missing guestinfo.dipx.esxi_host" >&2; exit 1; }
+  [ -n "$ESXI_USER" ] || { echo "missing guestinfo.dipx.esxi_user" >&2; exit 1; }
+  [ -n "$ESXI_PASSWORD" ] || { echo "missing guestinfo.dipx.esxi_password" >&2; exit 1; }
+  [ "$ESXI_PASSWORD" != "consumed" ] || { echo "GuestInfo credential already consumed but local secret is missing" >&2; exit 1; }
+
+  install -d -m 0750 -o root -g stoker "$SECRET_DIR"
+  TMP=$(mktemp "${SECRET_DIR}/.dipx-esxi.env.XXXXXX")
+  trap 'rm -f "$TMP"' EXIT HUP INT TERM
+  umask 077
+  {
+    printf 'GOVC_URL=https://%s\n' "$ESXI_HOST"
+    printf 'GOVC_USERNAME=%s\n' "$ESXI_USER"
+    printf 'GOVC_PASSWORD=%s\n' "$ESXI_PASSWORD"
+  } > "$TMP"
+  chown root:stoker "$TMP"
+  chmod 0640 "$TMP"
+  mv -f "$TMP" "$SECRET_FILE"
+  trap - EXIT HUP INT TERM
+
+  # Only root is allowed to access GuestInfo by the VMX policy. Once the secret
+  # has been persisted locally, remove the plaintext password from VM metadata.
+  vmtoolsd --cmd "info-set guestinfo.dipx.esxi_password consumed" >/dev/null
+  vmtoolsd --cmd "info-set guestinfo.dipx.bootstrap_status credential-staged" >/dev/null || true
+fi
+
+runuser -u stoker -- /usr/local/sbin/stoker run dipx-controller deploy --inventory production
+vmtoolsd --cmd "info-set guestinfo.dipx.bootstrap_status ready" >/dev/null || true

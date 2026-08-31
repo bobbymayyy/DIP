@@ -9,6 +9,7 @@
     local_bin: /home/stoker/.local/bin
     state_dir: /home/stoker/.local/state/dipx
     govc_archive: "{{ playbook_dir }}/../files/govc_Linux_x86_64.tar.gz"
+    esxi_secret_file: /etc/stoker/secrets/dipx-esxi.env
 
   tasks:
     - name: Create controller directories
@@ -42,6 +43,18 @@
       ansible.builtin.command:
         cmd: vmtoolsd --version
       changed_when: false
+
+    - name: Check staged ESXi credential handoff
+      ansible.builtin.stat:
+        path: "{{ esxi_secret_file }}"
+      register: esxi_secret
+
+    - name: Require controller credential handoff
+      ansible.builtin.assert:
+        that:
+          - esxi_secret.stat.exists
+          - esxi_secret.stat.mode == '0640'
+        fail_msg: "The ESXi GuestInfo credential was not staged correctly"
 
     - name: Mark controller ready
       ansible.builtin.copy:

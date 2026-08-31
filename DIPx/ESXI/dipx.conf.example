@@ -50,5 +50,6 @@ PORTGROUPS=VLAN10-Users:0,VLAN15-WiFi:0,VLAN20-Servers:0,VLAN30-DMZ:0,VLAN99-Mgm
 # SSH is not required for the local first-boot bootstrap and is disabled by default.
 ENABLE_SSH=0
 
-# DEBUG=1 enables shell tracing in %firstboot. Keep off unless troubleshooting.
+# DEBUG=1 adds extra non-secret bootstrap log messages. Shell xtrace is intentionally
+# not used because firstboot handles a per-build controller API credential.
 DEBUG=0

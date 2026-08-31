@@ -10,9 +10,9 @@ DIPx is the VMware ESXi deployment track for DIP. Its bootstrap is designed for 
 4. Copy `ESXI/dipx.conf.example` to `ESXI/dipx.conf` and set deployment-specific values.
 5. Generate a SHA-512 crypt hash for the ESXi root password with `openssl passwd -6` and put only the hash in the local config.
 6. Review `INSTALL_TARGETS`, then explicitly set `CONFIRM_DISK_WIPE=YES`.
-7. Build either a bootable ESXi ISO for USB/virtual media or an HTTP/iPXE tree.
-8. Boot the target. ESXi installs unattended, configures management networking, mounts `REPO`, creates the semantic port groups, and creates/powers on the STOKER controller VM.
-9. STOKER installs unattended, reboots without a LUKS prompt, runs its embedded `dipx-controller` project, stages `govc`, and marks itself controller-ready.
+7. Build either a bootable ESXi ISO for USB/virtual media or an HTTP/iPXE tree. The builder generates a unique `dipx-controller` API credential unless one is supplied through the environment.
+8. Boot the target. ESXi installs unattended, configures management networking, mounts `REPO`, creates the semantic port groups, creates the controller API account, and creates/powers on the STOKER controller VM.
+9. STOKER installs unattended, reboots without a LUKS prompt, retrieves the ESXi credential through root-only VMware GuestInfo, stores it under `/etc/stoker/secrets`, removes the plaintext password from GuestInfo, stages `govc`, and marks itself controller-ready.
 
 Once the machine has booted from the prepared USB/PXE source, the intended happy path requires no local monitor, keyboard, DCUI interaction, or IPMI console input.
 
@@ -109,6 +109,14 @@ The exporter patches the ESXi `prefix=` and kickstart URL for HTTP loading while
 
 The controller exists to get DIPx from "fresh ESXi" to a managed deployment plane. It therefore does not carry STOKER's full network-appliance module set and does not use LUKS. The security tradeoff is deliberate: the VMFS datastore and generated installer/controller media must be treated as deployment-sensitive, while rebooting the provisional controller remains fully unattended.
 
+### Zero-touch ESXi credential handoff
+
+The ESXi builder creates a unique high-entropy password for a local `dipx-controller` account on every build unless `DIPX_ESXI_API_PASSWORD` is explicitly supplied in the environment. `%firstboot` creates that account with the ESXi `Admin` role and injects the host, username, and password into the STOKER VM's VMware GuestInfo metadata.
+
+The VMX explicitly requires authenticated GuestInfo `info-get`/`info-set`, so a normal guest user cannot read the pending password. A root systemd bootstrap service retrieves it through VMware Tools, writes `/etc/stoker/secrets/dipx-esxi.env` as `0640 root:stoker`, and immediately overwrites the GuestInfo password with `consumed`.
+
+This removes the last planned console password handoff, but it means the generated ESXi ISO contains a unique plaintext bootstrap/API credential inside its rendered kickstart. Generated deployment media is therefore sensitive even though Git contains no reusable plaintext password. DIPx deliberately does **not** add `GOVC_INSECURE=1`; certificate trust/pinning should be handled explicitly when the controller starts performing API actions.
+
 ### Port-group names are semantic by default
 
 Names such as `VLAN99-Mgmt` match the existing ESXi/DIP naming convention. They do **not** imply that the physical network is currently using VLAN 99. The default `PORTGROUPS` values use VLAN ID `0`, which is untagged.
@@ -153,6 +161,13 @@ DIPx therefore currently expects Secure Boot to be disabled for this bootstrap p
 
 ## Current automation boundary
 
-The embedded STOKER project currently performs controller self-preparation and stages `govc`; it does not yet persist or embed ESXi API credentials.
+At the end of this bootstrap, STOKER has:
 
-The preferred next step is a short-lived credential handoff from ESXi `%firstboot` to STOKER through VMware `guestinfo`. VMware Tools can retrieve `guestinfo.*` values from inside the guest, which would let DIPx generate a per-deployment bootstrap credential, hand it only to the controller VM, establish the API session, and then clear/revoke the bootstrap secret instead of placing a reusable plaintext ESXi password in Git or static media.
+- a deterministic management address,
+- `open-vm-tools`,
+- an embedded `govc`,
+- an embedded DIPx Ansible project,
+- a locally staged ESXi API credential,
+- no requirement for ESXi SSH.
+
+The next implementation layer should establish explicit ESXi TLS trust, validate the `govc` API session, then move VM/network/service deployment into the embedded STOKER project. That keeps the remaining `%firstboot` logic small and lets the controller take over immediately after it has a trustworthy API channel.

@@ -6,8 +6,6 @@ ConditionPathExists=!/home/stoker/.local/state/dipx/controller-ready
 
 [Service]
 Type=oneshot
-User=stoker
-Group=stoker
 ExecStart=/usr/local/sbin/dipx-controller-bootstrap
 RemainAfterExit=yes
 
