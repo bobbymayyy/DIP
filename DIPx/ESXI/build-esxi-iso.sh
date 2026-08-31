@@ -52,11 +52,19 @@ while IFS='=' read -r key value || [[ -n "${key:-}" ]]; do
   printf -v "$key" '%s' "$value"
 done < "$CONFIG_FILE"
 
+# Compatibility aliases for configs created by the first DIPx bootstrap pass.
+INSTALL_TARGETS=${INSTALL_TARGETS:-${INSTALL_TARGET:-}}
+CONTROLLER_VM_NAME=${CONTROLLER_VM_NAME:-${PROV_VM_NAME:-}}
+CONTROLLER_ISO_RELATIVE=${CONTROLLER_ISO_RELATIVE:-${PROV_ISO_RELATIVE:-}}
+CONTROLLER_VCPUS=${CONTROLLER_VCPUS:-2}
+CONTROLLER_MEMORY_MB=${CONTROLLER_MEMORY_MB:-4096}
+CONTROLLER_DISK_GB=${CONTROLLER_DISK_GB:-20}
+
 required=(
   ESXI_VERSION ESXI_ROOTPW_HASH ESXI_IP ESXI_NETMASK ESXI_GATEWAY ESXI_DNS
-  ESXI_HOSTNAME INSTALL_TARGET CONFIRM_DISK_WIPE NTP_SERVER REPO_LABEL
-  DATASTORE_LABEL PROV_VM_NAME MGMT_PORTGROUP PROV_ISO_RELATIVE PORTGROUPS
-  ENABLE_SSH DEBUG
+  ESXI_HOSTNAME INSTALL_TARGETS CONFIRM_DISK_WIPE NTP_SERVER REPO_LABEL
+  DATASTORE_LABEL CONTROLLER_VM_NAME MGMT_PORTGROUP CONTROLLER_ISO_RELATIVE
+  PORTGROUPS ENABLE_SSH DEBUG
 )
 for key in "${required[@]}"; do
   [[ -n "${!key:-}" ]] || die "missing config value: $key"
@@ -65,21 +73,34 @@ done
 [[ "$ESXI_VERSION" == "7" || "$ESXI_VERSION" == "8" ]] || die "ESXI_VERSION must be 7 or 8"
 [[ "$ESXI_ROOTPW_HASH" == '$6$'* ]] || die "ESXI_ROOTPW_HASH must be a SHA-512 crypt hash beginning with \$6\$"
 [[ "$ESXI_ROOTPW_HASH" =~ ^[A-Za-z0-9.$/=]+$ ]] || die "ESXI_ROOTPW_HASH contains unsupported characters"
-[[ "$CONFIRM_DISK_WIPE" == "YES" ]] || die "refusing to build destructive installer: set CONFIRM_DISK_WIPE=YES after verifying INSTALL_TARGET"
+[[ "$CONFIRM_DISK_WIPE" == "YES" ]] || die "refusing to build destructive installer: set CONFIRM_DISK_WIPE=YES after verifying INSTALL_TARGETS"
 [[ "$ENABLE_SSH" == "0" || "$ENABLE_SSH" == "1" ]] || die "ENABLE_SSH must be 0 or 1"
 [[ "$DEBUG" == "0" || "$DEBUG" == "1" ]] || die "DEBUG must be 0 or 1"
 
 for key in ESXI_IP ESXI_NETMASK ESXI_GATEWAY; do
   [[ "${!key}" =~ ^[0-9.]+$ ]] || die "$key contains unsupported characters"
 done
-for key in ESXI_DNS ESXI_HOSTNAME NTP_SERVER REPO_LABEL DATASTORE_LABEL PROV_VM_NAME MGMT_PORTGROUP; do
+for key in ESXI_DNS ESXI_HOSTNAME NTP_SERVER REPO_LABEL DATASTORE_LABEL CONTROLLER_VM_NAME MGMT_PORTGROUP; do
   [[ "${!key}" =~ ^[A-Za-z0-9._:-]+$ ]] || die "$key contains unsupported characters"
 done
+for key in CONTROLLER_VCPUS CONTROLLER_MEMORY_MB CONTROLLER_DISK_GB; do
+  [[ "${!key}" =~ ^[0-9]+$ && "${!key}" -gt 0 ]] || die "$key must be a positive integer"
+done
+
 [[ "$PORTGROUPS" =~ ^[A-Za-z0-9._:-]+(,[A-Za-z0-9._:-]+)*$ ]] || die "PORTGROUPS contains unsupported characters"
 [[ "$PORTGROUPS" == *"${MGMT_PORTGROUP}:"* ]] || die "MGMT_PORTGROUP must also appear in PORTGROUPS"
-[[ "$PROV_ISO_RELATIVE" =~ ^[A-Za-z0-9._/-]+$ ]] || die "PROV_ISO_RELATIVE contains unsupported characters"
-[[ "$PROV_ISO_RELATIVE" != /* && "$PROV_ISO_RELATIVE" != *".."* ]] || die "PROV_ISO_RELATIVE must be a safe relative path"
-printf '%s\n' "$INSTALL_TARGET" | grep -Eq '^[-A-Za-z0-9._:+\\ ]+$' || die "INSTALL_TARGET contains unsupported characters"
+OLDIFS=$IFS
+IFS=','
+for item in $PORTGROUPS; do
+  vlan=${item##*:}
+  [[ "$vlan" =~ ^[0-9]+$ ]] || die "invalid VLAN ID in PORTGROUPS: $item"
+  (( vlan >= 0 && vlan <= 4094 )) || die "VLAN ID must be 0-4094: $item"
+done
+IFS=$OLDIFS
+
+[[ "$CONTROLLER_ISO_RELATIVE" =~ ^[A-Za-z0-9._/-]+$ ]] || die "CONTROLLER_ISO_RELATIVE contains unsupported characters"
+[[ "$CONTROLLER_ISO_RELATIVE" != /* && "$CONTROLLER_ISO_RELATIVE" != *".."* ]] || die "CONTROLLER_ISO_RELATIVE must be a safe relative path"
+printf '%s\n' "$INSTALL_TARGETS" | grep -Eq '^[-A-Za-z0-9._:+,\\ ]+$' || die "INSTALL_TARGETS contains unsupported characters"
 
 TEMPLATE="${SCRIPT_DIR}/ks${ESXI_VERSION}.cfg"
 [[ -r "$TEMPLATE" ]] || die "missing kickstart template: $TEMPLATE"
@@ -100,8 +121,9 @@ legacy_cfg="$WORKDIR/BOOT.CFG"
 efi_cfg="$WORKDIR/EFI_BOOT.CFG"
 
 export ESXI_ROOTPW_HASH ESXI_IP ESXI_NETMASK ESXI_GATEWAY ESXI_DNS ESXI_HOSTNAME
-export INSTALL_TARGET NTP_SERVER REPO_LABEL DATASTORE_LABEL PROV_VM_NAME
-export MGMT_PORTGROUP PROV_ISO_RELATIVE PORTGROUPS ENABLE_SSH DEBUG
+export INSTALL_TARGETS NTP_SERVER REPO_LABEL DATASTORE_LABEL CONTROLLER_VM_NAME
+export MGMT_PORTGROUP CONTROLLER_ISO_RELATIVE PORTGROUPS ENABLE_SSH DEBUG
+export CONTROLLER_VCPUS CONTROLLER_MEMORY_MB CONTROLLER_DISK_GB
 
 python3 - "$TEMPLATE" "$rendered_ks" <<'PY'
 import os
@@ -172,7 +194,8 @@ patch_boot_cfg "$efi_cfg"
 
 rm -f -- "$OUTPUT_ISO"
 log "source ISO: $SOURCE_ISO"
-log "target disk selector: $INSTALL_TARGET"
+log "target disk selectors: $INSTALL_TARGETS"
+log "controller: ${CONTROLLER_VM_NAME} (${CONTROLLER_VCPUS} vCPU, ${CONTROLLER_MEMORY_MB} MiB, ${CONTROLLER_DISK_GB} GiB thin)"
 log "building ESXi $ESXI_VERSION installer: $OUTPUT_ISO"
 
 # Modify the vendor ISO in xorriso native mode and replay its existing BIOS/UEFI
