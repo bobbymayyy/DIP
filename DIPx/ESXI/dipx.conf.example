@@ -1,11 +1,12 @@
-# DIPx ESXi installer build configuration.
+# DIPx deployment configuration.
 # Copy this file to dipx.conf, edit it locally, and do not commit dipx.conf.
+# The same file is consumed by the ESXi and STOKER controller builders.
 # Values are literal text after the first '='. Do not wrap values in shell quotes.
 
 ESXI_VERSION=8
 
 # Generate interactively with: openssl passwd -6
-# Paste the full $6$... hash here. The plaintext password is never needed by the builder.
+# Paste the full $6$... hash here. The plaintext root password is never needed by the builder.
 ESXI_ROOTPW_HASH=
 
 ESXI_IP=10.0.99.2
@@ -15,23 +16,38 @@ ESXI_DNS=10.0.20.10
 ESXI_HOSTNAME=esxi01.nerd.dipx
 NTP_SERVER=10.0.20.10
 
-# ESXi --firstdisk selector. "local" is convenient but can be ambiguous on multi-disk hosts.
-# Use a hardware-specific selector where practical.
-INSTALL_TARGET=local
+# Ordered ESXi --firstdisk selectors. The installer uses the first match.
+# - localesx: prefer an existing ESXi system disk during rebuilds
+# - DELL\ BOSS-N1: common Dell BOSS-N1 boot device selector
+# - local: broad compatibility fallback
+# Reorder/replace this list for a known hardware fleet.
+INSTALL_TARGETS=localesx,DELL\ BOSS-N1,local
 
 # The kickstart uses --overwritevmfs. The builder refuses to create an ISO until this is YES.
 CONFIRM_DISK_WIPE=NO
 
+# Offline VMFS datastore carried by the deployment media.
 REPO_LABEL=REPO
 DATASTORE_LABEL=datastore1
-PROV_VM_NAME=prov01
+
+# STOKER provisional controller created automatically after ESXi first boot.
+CONTROLLER_VM_NAME=stoker01
+CONTROLLER_HOSTNAME=stoker01.nerd.dipx
+CONTROLLER_IP=10.0.99.11
+CONTROLLER_NETMASK=255.255.255.0
+CONTROLLER_GATEWAY=10.0.99.1
+CONTROLLER_DNS=10.0.20.10
+CONTROLLER_ISO_RELATIVE=images/isos/stoker-dipx-amd64.iso
+CONTROLLER_VCPUS=2
+CONTROLLER_MEMORY_MB=4096
+CONTROLLER_DISK_GB=20
 MGMT_PORTGROUP=VLAN99-Mgmt
-PROV_ISO_RELATIVE=images/isos/OL10-prov.iso
 
-# Comma-separated portgroup:vlan pairs. MGMT_PORTGROUP must be present here.
-PORTGROUPS=VLAN10-Users:10,VLAN15-WiFi:15,VLAN20-Servers:20,VLAN30-DMZ:30,VLAN99-Mgmt:99
+# Port-group names follow ESXi/DIP semantics. VLAN ID 0 means untagged traffic.
+# Change individual IDs to non-zero values only when the deployment network actually uses 802.1Q VLANs.
+PORTGROUPS=VLAN10-Users:0,VLAN15-WiFi:0,VLAN20-Servers:0,VLAN30-DMZ:0,VLAN99-Mgmt:0
 
-# SSH is not required for the first-boot bootstrap and is disabled by default.
+# SSH is not required for the local first-boot bootstrap and is disabled by default.
 ENABLE_SSH=0
 
 # DEBUG=1 enables shell tracing in %firstboot. Keep off unless troubleshooting.
